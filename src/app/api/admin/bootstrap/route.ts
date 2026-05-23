@@ -8,10 +8,10 @@ const nanoid = customAlphabet("23456789ABCDEFGHJKLMNPQRSTUVWXYZ", 8);
 export async function POST(req: Request) {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
-  const userCount = await db.user.count();
+  const adminCount = await db.user.count({ where: { role: "ADMIN" } });
 
   const authorized =
-    (secret && auth === `Bearer ${secret}`) || userCount === 0;
+    (secret && auth === `Bearer ${secret}`) || adminCount === 0;
 
   if (!authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -51,7 +51,7 @@ Set `OPENAI_API_KEY` in `.env` to enable the assistant at `/app`.
 
 ## Railway deployment
 
-1. Push this repo to [github.com/xFloXxGG/ely.ai](https://github.com/xFloXxGG/ely.ai).
+1. Repo: [github.com/xfloxx09/ely.ai](https://github.com/xfloxx09/ely.ai) — connect this in Railway.
 2. Create a Railway project → **Deploy from GitHub** → select the repo.
 3. Add **PostgreSQL** → reference `DATABASE_URL` on the web service.
 4. Set environment variables from `.env.example` (production values).

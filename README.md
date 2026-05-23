@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ely — ely.ai
 
-## Getting Started
+Ely is an AI-powered life assistant with a product-first affiliate program. This MVP includes marketing pages, authentication, Stripe subscriptions (Plus/Pro), AI chat (Smart Concierge & Content Crafter), genealogy tracking, and simplified commission calculations.
 
-First, run the development server:
+> **Legal disclaimer:** This codebase is an engineering scaffold. Consult an MLM compliance attorney before public launch in any jurisdiction.
+
+## Stack
+
+- **Next.js 16** (App Router, standalone output for Railway)
+- **PostgreSQL** + **Prisma**
+- **Auth.js** (credentials)
+- **Stripe** (subscriptions + webhooks)
+- **OpenAI** (streaming chat)
+
+## Local development
+
+### 1. Prerequisites
+
+- Node.js 20+
+- Docker (for local Postgres) or a remote `DATABASE_URL`
+
+### 2. Setup
 
 ```bash
+cp .env.example .env
+# Edit .env with your secrets
+
+docker compose up -d
+npm install
+npm run db:migrate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Stripe (test mode)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See [scripts/stripe-seed.md](scripts/stripe-seed.md) for product/price setup.
 
-## Learn More
+Forward webhooks locally:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Copy the webhook signing secret into `.env` as `STRIPE_WEBHOOK_SECRET`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. OpenAI
 
-## Deploy on Vercel
+Set `OPENAI_API_KEY` in `.env` to enable the assistant at `/app`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Railway deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push this repo to [github.com/xFloXxGG/ely.ai](https://github.com/xFloXxGG/ely.ai).
+2. Create a Railway project → **Deploy from GitHub** → select the repo.
+3. Add **PostgreSQL** → reference `DATABASE_URL` on the web service.
+4. Set environment variables from `.env.example` (production values).
+5. **Settings → Deploy → Pre-deploy command:** `npx prisma migrate deploy` (also in `railway.toml`).
+6. Add custom domain **ely.ai** (and redirect `www` → apex).
+7. Stripe webhook: `https://ely.ai/api/stripe/webhook`.
+
+### Monthly commissions cron
+
+Schedule a POST request (Railway cron or external):
+
+```http
+POST https://ely.ai/api/cron/commissions
+Authorization: Bearer YOUR_CRON_SECRET
+```
+
+Run on the 1st of each month (or your chosen payout cycle).
+
+## MVP compensation (simplified)
+
+| Type | Rate | Notes |
+|------|------|-------|
+| Fast-start | 30% | First month of personally enrolled Plus/Pro |
+| Personal residual | 20% | Recurring on personal enrollments |
+| Unilevel L1 | 5% | Explorer — level-1 downline subscriptions |
+
+Affiliates must maintain **active Ely Pro** and **$50+ personal volume** to earn.
+
+## Project structure
+
+```
+src/
+  app/           # Routes (marketing, auth, app, dashboard, API)
+  components/    # UI
+  lib/
+    mlm/         # Genealogy, GV, commissions
+    ai/          # OpenAI modules & usage
+  auth.ts        # Auth.js config
+prisma/          # Schema & migrations
+```
+
+## Phase 2 (not in MVP)
+
+- Full unilevel depth by rank, leadership matching, retail bonus pool
+- 70% retail rule enforcement
+- Redis leaderboards & Builder's Arena campaigns
+- Additional AI modules (Home, Habit, Knowledge, Finance)
+- Stripe Connect payouts
+
+## License
+
+Private — All rights reserved.

@@ -43,7 +43,7 @@ export default async function DashboardPage() {
     (user?.subscription?.status === "ACTIVE" &&
       user.subscription.plan === "PRO");
 
-  if (!isPro || !hasAffiliateAccess(user?.role)) {
+  if (!user || !isPro || !hasAffiliateAccess(user.role)) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <h1 className="text-2xl font-bold text-white">Affiliate Dashboard</h1>

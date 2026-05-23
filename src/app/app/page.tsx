@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { ChatInterface } from "@/components/app/chat-interface";
 import { todayKey } from "@/lib/utils";
+import { effectivePlanForUser } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Assistant" };
@@ -10,10 +11,14 @@ export default async function AppPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const sub = await db.subscription.findUnique({
-    where: { userId: session.user.id },
+  const userRecord = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, subscription: { select: { plan: true } } },
   });
-  const plan = sub?.plan ?? "FREE";
+  const plan = effectivePlanForUser(
+    userRecord?.subscription?.plan ?? "FREE",
+    userRecord?.role
+  );
 
   const usage = await db.aiUsage.findUnique({
     where: {

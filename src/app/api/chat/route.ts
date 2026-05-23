@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { streamChatCompletion } from "@/lib/ai/router";
 import { checkAndIncrementUsage, incrementDailyQuest } from "@/lib/ai/usage";
+import { effectivePlanForUser } from "@/lib/auth-utils";
 import { AiModule } from "@prisma/client";
 import { z } from "zod";
 
@@ -37,10 +38,14 @@ export async function POST(req: Request) {
     });
   }
 
-  const sub = await db.subscription.findUnique({
-    where: { userId: session.user.id },
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, subscription: { select: { plan: true } } },
   });
-  const plan = sub?.plan ?? "FREE";
+  const plan = effectivePlanForUser(
+    user?.subscription?.plan ?? "FREE",
+    user?.role
+  );
 
   const usage = await checkAndIncrementUsage(session.user.id, plan);
   if (!usage.allowed) {

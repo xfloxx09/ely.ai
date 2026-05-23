@@ -10,6 +10,7 @@ import {
   getDirectDownline,
 } from "@/lib/mlm/genealogy";
 import { getCommissionSummary, isAffiliateActive } from "@/lib/mlm/commissions";
+import { hasAffiliateAccess, isAdminRole } from "@/lib/auth-utils";
 import { CopyButton } from "@/components/dashboard/copy-button";
 
 export const metadata = { title: "Affiliate Dashboard" };
@@ -36,11 +37,13 @@ export default async function DashboardPage() {
     },
   });
 
+  const isAdmin = isAdminRole(user?.role);
   const isPro =
-    user?.subscription?.status === "ACTIVE" &&
-    user.subscription.plan === "PRO";
+    isAdmin ||
+    (user?.subscription?.status === "ACTIVE" &&
+      user.subscription.plan === "PRO");
 
-  if (!isPro || user.role !== "AFFILIATE") {
+  if (!isPro || !hasAffiliateAccess(user?.role)) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <h1 className="text-2xl font-bold text-white">Affiliate Dashboard</h1>

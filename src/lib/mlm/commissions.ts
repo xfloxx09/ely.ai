@@ -27,7 +27,7 @@ export async function isAffiliateActive(userId: string): Promise<boolean> {
     },
   });
 
-  if (!user || user.role !== "AFFILIATE") return false;
+  if (!user || (user.role !== "AFFILIATE" && user.role !== "ADMIN")) return false;
   if (
     user.subscription?.status !== "ACTIVE" ||
     user.subscription.plan !== "PRO"

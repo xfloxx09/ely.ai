@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortalButton } from "@/components/settings/portal-button";
 import { PersonaSettingsForm } from "@/components/settings/persona-settings-form";
+import { NexusSettingsForm } from "@/components/settings/nexus-settings-form";
+import { effectivePlanForUser } from "@/lib/auth-utils";
 import Link from "next/link";
 
 export const metadata = { title: "Settings" };
@@ -28,8 +30,15 @@ export default async function SettingsPage({
       subscription: true,
       personaSettings: true,
       personalityProfile: { select: { completedAt: true } },
+      avatarProfile: { select: { rpmUrl: true, companionName: true } },
     },
   });
+
+  const plan = effectivePlanForUser(
+    user?.subscription?.plan ?? "FREE",
+    user?.role
+  );
+  const isPro = plan === "PRO" || user?.role === "ADMIN";
 
   return (
     <div className="space-y-6">
@@ -82,6 +91,36 @@ export default async function SettingsPage({
           <PersonaSettingsForm
             initialOptOut={user?.personaSettings?.optOutPersonalization ?? false}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Model Nexus</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NexusSettingsForm isPro={isPro} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>ELY face (Ready Player Me)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-slate-400">
+          {user?.avatarProfile?.companionName ? (
+            <p>
+              Companion:{" "}
+              <span className="text-white">{user.avatarProfile.companionName}</span>
+            </p>
+          ) : null}
+          {isPro ? (
+            <Link href="/settings/avatar" className="text-violet-400 hover:underline">
+              Open avatar creator →
+            </Link>
+          ) : (
+            <p>Upgrade to Pro to design your Ready Player Me avatar.</p>
+          )}
         </CardContent>
       </Card>
 

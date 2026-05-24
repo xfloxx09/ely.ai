@@ -20,7 +20,9 @@ export default async function AppPage() {
       subscription: { select: { plan: true } },
       personalityProfile: true,
       personaSettings: true,
-      avatarProfile: { select: { rpmUrl: true } },
+      avatarProfile: {
+        select: { rpmUrl: true, companionName: true, evolutionStage: true },
+      },
     },
   });
 
@@ -66,6 +68,9 @@ export default async function AppPage() {
       knowsYou={knowsYou}
       scores={scores}
       rpmUrl={userRecord?.avatarProfile?.rpmUrl}
+      companionName={userRecord?.avatarProfile?.companionName}
+      evolutionStage={userRecord?.avatarProfile?.evolutionStage ?? 0}
+      voiceEnabled={plan === "PLUS" || plan === "PRO"}
     />
   );
 }

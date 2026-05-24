@@ -37,6 +37,9 @@ export function ChatInterface({
   knowsYou,
   scores,
   rpmUrl,
+  companionName,
+  evolutionStage = 0,
+  voiceEnabled = false,
 }: {
   initialPlan: string;
   initialRemaining: number | null;
@@ -49,13 +52,18 @@ export function ChatInterface({
     neuroticism: number;
   } | null;
   rpmUrl?: string | null;
+  companionName?: string | null;
+  evolutionStage?: number;
+  voiceEnabled?: boolean;
 }) {
   const [module, setModule] = useState<ModuleKey>("CONCIERGE");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(initialRemaining);
+  const [speaking, setSpeaking] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const displayName = companionName ?? "ELY";
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -117,12 +125,38 @@ export function ChatInterface({
     setLoading(false);
   }
 
+  async function speakMessage(text: string) {
+    if (!voiceEnabled || !text.trim() || speaking) return;
+    setSpeaking(true);
+    try {
+      const res = await fetch("/api/voice/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      await audio.play();
+      URL.revokeObjectURL(url);
+    } finally {
+      setSpeaking(false);
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
       <div className="flex items-start gap-4">
-        <ElyAvatar scores={scores} plan={initialPlan} rpmUrl={rpmUrl} />
+        <ElyAvatar
+          scores={scores}
+          plan={initialPlan}
+          rpmUrl={rpmUrl}
+          companionName={companionName}
+          evolutionStage={evolutionStage}
+        />
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-white">ELY</h1>
+          <h1 className="text-xl font-bold text-white">{displayName}</h1>
           <p className="text-sm text-slate-400">
             Your personal AI · Plan {initialPlan}
             {knowsYou ? (
@@ -135,8 +169,10 @@ export function ChatInterface({
             )}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Tip: use <code className="text-violet-300">/model gpt-4o</code> for
-            Model Nexus (Plus/Pro)
+            Model Nexus: <code className="text-violet-300">/model gpt-4o</code>,{" "}
+            <code className="text-violet-300">/model claude</code>,{" "}
+            <code className="text-violet-300">/model gemini</code>
+            {voiceEnabled ? " · 🔊 on assistant messages" : ""}
           </p>
         </div>
       </div>
@@ -179,7 +215,24 @@ export function ChatInterface({
                     : "bg-white/5 text-slate-200"
                 )}
               >
-                {m.content || (loading ? "…" : "")}
+                <div className="flex items-start justify-between gap-2">
+                  <span className="flex-1">
+                    {m.content || (loading ? "…" : "")}
+                  </span>
+                  {m.role === "assistant" &&
+                  m.content &&
+                  voiceEnabled ? (
+                    <button
+                      type="button"
+                      title="Listen"
+                      className="shrink-0 text-violet-400 hover:text-violet-200"
+                      onClick={() => speakMessage(m.content)}
+                      disabled={speaking}
+                    >
+                      🔊
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ))}
             <div ref={bottomRef} />

@@ -1,11 +1,18 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { streamChatCompletion } from "@/lib/ai/router";
+import { buildPersonaSystemPrompt } from "@/lib/ai/persona-prompt";
 import { checkAndIncrementUsage, incrementDailyQuest } from "@/lib/ai/usage";
 import { effectivePlanForUser } from "@/lib/auth-utils";
 import { normalizeModule, MODULE_META } from "@/lib/ai/modules";
 import { getRelevantMemories, extractMemoryFact } from "@/lib/memory/store";
-import { parseNexusCommand, checkNexusQuota } from "@/lib/nexus/router";
+import {
+  parseNexusCommand,
+  stripNexusCommand,
+  checkNexusAccess,
+  streamNexusCompletion,
+} from "@/lib/nexus/router";
+import { syncEvolutionStage } from "@/lib/avatar/evolution";
 import { AiModule } from "@prisma/client";
 import { z } from "zod";
 
@@ -73,11 +80,16 @@ export async function POST(req: Request) {
     body.data.messages.filter((m) => m.role === "user").pop()?.content ?? "";
 
   const nexusCmd = parseNexusCommand(lastUserMsg);
+
   if (nexusCmd) {
-    const quota = await checkNexusQuota(session.user.id, plan);
-    if (!quota.allowed) {
+    const access = await checkNexusAccess(
+      session.user.id,
+      plan,
+      nexusCmd.provider
+    );
+    if (!access.allowed) {
       return new Response(
-        JSON.stringify({ error: quota.message, remaining: quota.remaining }),
+        JSON.stringify({ error: access.message, remaining: access.remaining }),
         { status: 402 }
       );
     }
@@ -110,15 +122,28 @@ export async function POST(req: Request) {
       ? await getRelevantMemories(session.user.id, lastUserMsg)
       : [];
 
-  const stream = await streamChatCompletion({
+  const styleSummary = user?.personaSettings?.shareTraitsWithNexus
+    ? user?.personaSettings?.communicationStyleSummary
+    : user?.personaSettings?.communicationStyleSummary
+      ? "Adaptive companion tone (trait scores private)"
+      : user?.personaSettings?.communicationStyleSummary;
+
+  const system = buildPersonaSystemPrompt({
     plan,
     module,
-    messages: body.data.messages,
     scores,
     optOut: user?.personaSettings?.optOutPersonalization,
     toneOverride: user?.personaSettings?.toneOverride,
     memories,
-    styleSummary: user?.personaSettings?.communicationStyleSummary,
+    styleSummary,
+  });
+
+  const cleanMessages = body.data.messages.map((m, i, arr) => {
+    if (m.role === "user" && i === arr.length - 1 && nexusCmd) {
+      const stripped = stripNexusCommand(m.content);
+      return { ...m, content: stripped || m.content };
+    }
+    return m;
   });
 
   if (lastUserMsg) {
@@ -131,10 +156,7 @@ export async function POST(req: Request) {
       },
     });
     await incrementDailyQuest(session.user.id);
-
-    if (!meta.live) {
-      // still count usage; module stub responds via prompt
-    }
+    await syncEvolutionStage(session.user.id);
   }
 
   const encoder = new TextEncoder();
@@ -142,9 +164,6 @@ export async function POST(req: Request) {
   let prefix = "";
   if (!meta.live) {
     prefix = `[${meta.label} is in preview — core features coming soon.]\n\n`;
-  }
-  if (nexusCmd) {
-    prefix += `[Model Nexus: requested ${nexusCmd.model} — routing expands in Phase 2.]\n\n`;
   }
 
   const readable = new ReadableStream({
@@ -154,13 +173,43 @@ export async function POST(req: Request) {
           full += prefix;
           controller.enqueue(encoder.encode(prefix));
         }
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content ?? "";
-          if (text) {
+
+        if (nexusCmd) {
+          const nexus = await streamNexusCompletion({
+            userId: session.user.id,
+            plan,
+            command: nexusCmd,
+            system,
+            messages: cleanMessages,
+          });
+          const header = `[Model Nexus · ${nexus.provider}/${nexus.model} via ${nexus.via}]\n\n`;
+          full += header;
+          controller.enqueue(encoder.encode(header));
+
+          for await (const text of nexus.stream) {
             full += text;
             controller.enqueue(encoder.encode(text));
           }
+        } else {
+          const stream = await streamChatCompletion({
+            plan,
+            module,
+            messages: cleanMessages,
+            scores,
+            optOut: user?.personaSettings?.optOutPersonalization,
+            toneOverride: user?.personaSettings?.toneOverride,
+            memories,
+            styleSummary: user?.personaSettings?.communicationStyleSummary,
+          });
+          for await (const chunk of stream) {
+            const text = chunk.choices[0]?.delta?.content ?? "";
+            if (text) {
+              full += text;
+              controller.enqueue(encoder.encode(text));
+            }
+          }
         }
+
         if (full) {
           await db.chatMessage.create({
             data: {
@@ -173,7 +222,7 @@ export async function POST(req: Request) {
           if (lastUserMsg) {
             await extractMemoryFact(
               session.user.id,
-              lastUserMsg,
+              stripNexusCommand(lastUserMsg),
               full,
               plan
             );
@@ -182,7 +231,10 @@ export async function POST(req: Request) {
         controller.close();
       } catch (e) {
         console.error("Stream error:", e);
-        controller.error(e);
+        const msg =
+          e instanceof Error ? e.message : "ELY could not complete this request.";
+        controller.enqueue(encoder.encode(`\n\n[Error: ${msg}]`));
+        controller.close();
       }
     },
   });
@@ -192,6 +244,7 @@ export async function POST(req: Request) {
       "Content-Type": "text/plain; charset=utf-8",
       "X-Ely-Remaining":
         usage.remaining === null ? "unlimited" : String(usage.remaining),
+      ...(nexusCmd ? { "X-Ely-Nexus": "1" } : {}),
     },
   });
 }

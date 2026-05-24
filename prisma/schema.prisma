@@ -40,6 +40,9 @@ enum CommissionType {
   FAST_START
   RESIDUAL
   UNILEVEL_L1
+  UNILEVEL_L2
+  UNILEVEL_L3
+  LEADERSHIP_MATCH
 }
 
 enum CommissionStatus {

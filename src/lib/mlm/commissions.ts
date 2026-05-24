@@ -9,7 +9,6 @@ import { currentPeriod, planMonthlyValueCents } from "@/lib/utils";
 
 const FAST_START_RATE = 0.3;
 const RESIDUAL_RATE = 0.2;
-const UNILEVEL_L1_RATE = 0.05;
 const MIN_PV_CENTS = 5000;
 
 export async function isAffiliateActive(userId: string): Promise<boolean> {
@@ -154,44 +153,17 @@ export async function runMonthlyCommissions() {
       }
     }
 
-    if (buyer.sponsorId) {
-      const sponsorAffiliate = await db.user.findUnique({
-        where: { id: buyer.sponsorId },
-        select: { role: true },
-      });
-
-      if (
-        sponsorAffiliate?.role === "AFFILIATE" &&
-        (await isAffiliateActive(buyer.sponsorId))
-      ) {
-        const unilevelCents = Math.round(monthlyCents * UNILEVEL_L1_RATE);
-        const exists = await db.commissionLedger.findFirst({
-          where: {
-            userId: buyer.sponsorId,
-            sourceUserId: buyer.id,
-            type: CommissionType.UNILEVEL_L1,
-            period,
-          },
-        });
-
-        if (!exists) {
-          await db.commissionLedger.create({
-            data: {
-              userId: buyer.sponsorId,
-              sourceUserId: buyer.id,
-              type: CommissionType.UNILEVEL_L1,
-              amountCents: unilevelCents,
-              period,
-              description: `Unilevel L1 (${sub.plan})`,
-            },
-          });
-          created++;
-        }
-      }
-    }
   }
 
-  return { period, created };
+  const { runPhase2Commissions } = await import("./depth-commissions");
+  const phase2 = await runPhase2Commissions();
+
+  return {
+    period,
+    created,
+    depthUnilevel: phase2.depth,
+    leadershipMatch: phase2.leadership,
+  };
 }
 
 export async function getCommissionSummary(userId: string) {

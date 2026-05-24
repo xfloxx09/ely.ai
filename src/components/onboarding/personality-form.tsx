@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { BFI2_SHORT_ITEMS, LIKERT_LABELS } from "@/lib/personality/bfi2-short";
 import { PERSONALITY_CONSENT } from "@/lib/personality/consent";
 import { Button } from "@/components/ui/button";
 
 export function PersonalityForm() {
   const router = useRouter();
+  const { update } = useSession();
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,6 +41,7 @@ export function PersonalityForm() {
       setError(data.error ?? "Submission failed");
       return;
     }
+    await update({ onboardingStep: "COMPLETE" });
     router.push("/onboarding/complete");
     router.refresh();
   }

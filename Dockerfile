@@ -2,7 +2,8 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package.json package-lock.json* ./
-RUN npm ci
+# Schema is not copied yet — skip postinstall (prisma generate) until builder stage.
+RUN npm ci --ignore-scripts
 
 FROM node:20-alpine AS builder
 WORKDIR /app

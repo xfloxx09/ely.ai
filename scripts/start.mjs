@@ -1,13 +1,20 @@
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-const port = process.env.PORT || "3000";
-const host = process.env.HOSTNAME || "0.0.0.0";
+// Railway sets HOSTNAME to the container id — do NOT use it for bind address.
+const host = process.env.HOST ?? "0.0.0.0";
+const port = process.env.PORT ?? "3000";
 
-console.log(`Starting Ely on ${host}:${port}`);
+const root = dirname(fileURLToPath(import.meta.url));
+const nextBin = join(root, "..", "node_modules", "next", "dist", "bin", "next");
 
-const child = spawn("npx", ["next", "start", "-H", host, "-p", port], {
+console.log(`[ely] starting next on ${host}:${port}`);
+
+const child = spawn(process.execPath, [nextBin, "start", "-H", host, "-p", port], {
   stdio: "inherit",
   env: process.env,
+  cwd: join(root, ".."),
 });
 
 child.on("exit", (code, signal) => {

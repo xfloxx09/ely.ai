@@ -13,10 +13,11 @@ const plans = [
     price: "$0",
     period: "forever",
     features: [
-      "10 AI messages per day",
-      "Smart Concierge & Content Crafter",
-      "Basic models",
-      "Daily quests & XP",
+      "20 messages per day",
+      "Default ELY persona (no adaptation)",
+      "Personality test stored for when you upgrade",
+      "Concierge & Scribe modules",
+      "No Model Nexus",
     ],
     cta: (
       <Link href="/register">
@@ -32,10 +33,11 @@ const plans = [
     period: "/month",
     highlight: true,
     features: [
-      "Unlimited AI messages",
-      "Premium models",
-      "All plugin connections",
-      "$199/year option",
+      "Unlimited ELY chat",
+      "Full task suite (modules rolling out)",
+      "BFI-2 personality adaptation (tone)",
+      "100 Model Nexus requests / month",
+      "Retail customer — not affiliate eligible",
     ],
     cta: <CheckoutButton plan="PLUS" label="Subscribe to Plus" />,
     ctaYearly: (
@@ -53,9 +55,11 @@ const plans = [
     period: "/month",
     features: [
       "Everything in Plus",
-      "Priority GPT-4o processing",
-      "Team features & custom instructions",
-      "Affiliate / distributor eligibility",
+      "Full personality persona + deep memory",
+      "Custom avatar (Ready Player Me — Phase 2)",
+      "Unlimited Nexus with your API keys",
+      "Priority models & affiliate program",
+      "Avatar Boutique purchases count toward GV",
     ],
     cta: <CheckoutButton plan="PRO" label="Subscribe to Pro" />,
   },
@@ -67,9 +71,9 @@ export default async function PricingPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-16">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-white">Simple, honest pricing</h1>
+        <h1 className="text-4xl font-bold text-white">Invest in a companion, not a chatbot</h1>
         <p className="mt-4 text-slate-400">
-          Choose the plan that fits. Upgrade anytime.
+          Personality depth is the core differentiator. Upgrade when you&apos;re ready.
         </p>
       </div>
 
@@ -122,11 +126,11 @@ export default async function PricingPage() {
       </div>
 
       <p className="mt-10 text-center text-sm text-slate-500">
-        30-day money-back guarantee on your first subscription. See our{" "}
+        Avatar Boutique cosmetics and Ely Credits packs — coming soon. 30-day
+        money-back on first subscription.{" "}
         <Link href="/legal/terms" className="text-violet-400 hover:underline">
           Terms
         </Link>
-        .
       </p>
     </div>
   );

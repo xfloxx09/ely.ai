@@ -2,7 +2,7 @@ import { Plan } from "@prisma/client";
 import { db } from "@/lib/db";
 import { todayKey } from "@/lib/utils";
 
-const FREE_DAILY_LIMIT = 10;
+const FREE_DAILY_LIMIT = 20;
 
 export async function checkAndIncrementUsage(
   userId: string,

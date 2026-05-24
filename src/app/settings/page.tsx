@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortalButton } from "@/components/settings/portal-button";
+import { PersonaSettingsForm } from "@/components/settings/persona-settings-form";
 import Link from "next/link";
 
 export const metadata = { title: "Settings" };
@@ -25,6 +26,8 @@ export default async function SettingsPage({
       referralCode: true,
       stripeCustomerId: true,
       subscription: true,
+      personaSettings: true,
+      personalityProfile: { select: { completedAt: true } },
     },
   });
 
@@ -56,6 +59,29 @@ export default async function SettingsPage({
             <span className="text-slate-500">Referral code:</span>{" "}
             {user?.referralCode}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Personality & privacy</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {user?.personalityProfile ? (
+            <p className="mb-4 text-sm text-slate-400">
+              Snapshot completed{" "}
+              {user.personalityProfile.completedAt.toLocaleDateString()}
+            </p>
+          ) : (
+            <p className="mb-4 text-sm text-amber-300">
+              <Link href="/onboarding/personality" className="underline">
+                Complete your personality snapshot
+              </Link>
+            </p>
+          )}
+          <PersonaSettingsForm
+            initialOptOut={user?.personaSettings?.optOutPersonalization ?? false}
+          />
         </CardContent>
       </Card>
 

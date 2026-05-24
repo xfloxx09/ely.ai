@@ -12,9 +12,16 @@ export default function PrivacyPage() {
       <h2>Data we collect</h2>
       <ul>
         <li>Account: name, email, password (hashed)</li>
-        <li>AI conversations stored to improve your experience</li>
+        <li>Personality: five trait scores only (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)—not individual test answers</li>
+        <li>AI conversations and optional memory facts (Pro) to personalize ELY</li>
         <li>Billing: handled by Stripe; we do not store full card numbers</li>
       </ul>
+      <h2>Psychometric data</h2>
+      <p>
+        Personality scores are sensitive. They are stored securely, never sold, and
+        never shown to other users. You may opt out of personalization in Settings
+        or export/delete your data on request.
+      </p>
       <h2>How we use data</h2>
       <p>
         To provide the service, process subscriptions, calculate affiliate

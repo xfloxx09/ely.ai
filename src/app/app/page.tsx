@@ -4,8 +4,9 @@ import { ChatInterface } from "@/components/app/chat-interface";
 import { todayKey } from "@/lib/utils";
 import { effectivePlanForUser } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
+import { needsPersonalityOnboarding } from "@/lib/onboarding";
 
-export const metadata = { title: "Assistant" };
+export const metadata = { title: "ELY" };
 
 export default async function AppPage() {
   const session = await auth();
@@ -13,8 +14,23 @@ export default async function AppPage() {
 
   const userRecord = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, subscription: { select: { plan: true } } },
+    select: {
+      role: true,
+      onboardingStep: true,
+      subscription: { select: { plan: true } },
+      personalityProfile: true,
+      personaSettings: true,
+      avatarProfile: { select: { rpmUrl: true } },
+    },
   });
+
+  if (
+    userRecord &&
+    needsPersonalityOnboarding(userRecord.onboardingStep, userRecord.role)
+  ) {
+    redirect("/onboarding/personality");
+  }
+
   const plan = effectivePlanForUser(
     userRecord?.subscription?.plan ?? "FREE",
     userRecord?.role
@@ -26,23 +42,30 @@ export default async function AppPage() {
     },
   });
   const remaining =
-    plan === "FREE" ? Math.max(0, 10 - (usage?.messageCount ?? 0)) : null;
+    plan === "FREE" ? Math.max(0, 20 - (usage?.messageCount ?? 0)) : null;
 
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { xp: true, streak: true, dailyTaskCount: true },
-  });
+  const scores = userRecord?.personalityProfile
+    ? {
+        openness: userRecord.personalityProfile.openness,
+        conscientiousness: userRecord.personalityProfile.conscientiousness,
+        extraversion: userRecord.personalityProfile.extraversion,
+        agreeableness: userRecord.personalityProfile.agreeableness,
+        neuroticism: userRecord.personalityProfile.neuroticism,
+      }
+    : null;
+
+  const knowsYou =
+    Boolean(scores) &&
+    !userRecord?.personaSettings?.optOutPersonalization &&
+    (plan === "PLUS" || plan === "PRO");
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Ely Assistant</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Daily quests: {user?.dailyTaskCount ?? 0}/3 · XP {user?.xp ?? 0} ·
-          Streak {user?.streak ?? 0} days
-        </p>
-      </div>
-      <ChatInterface initialPlan={plan} initialRemaining={remaining} />
-    </div>
+    <ChatInterface
+      initialPlan={plan}
+      initialRemaining={remaining}
+      knowsYou={knowsYou}
+      scores={scores}
+      rpmUrl={userRecord?.avatarProfile?.rpmUrl}
+    />
   );
 }

@@ -17,6 +17,7 @@ async function main() {
       data: {
         role: "ADMIN",
         rank: "MASTERMIND",
+        onboardingStep: "COMPLETE",
         passwordHash: await bcrypt.hash(password, 12),
         name,
       },
@@ -47,6 +48,7 @@ async function main() {
       passwordHash: await bcrypt.hash(password, 12),
       role: "ADMIN",
       rank: "MASTERMIND",
+      onboardingStep: "COMPLETE",
       referralCode,
       xp: 500,
       streak: 30,

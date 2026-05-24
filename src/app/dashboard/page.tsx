@@ -33,6 +33,7 @@ export default async function DashboardPage() {
       referralCode: true,
       role: true,
       rank: true,
+      soulSeekerProgress: true,
       subscription: { select: { plan: true, status: true } },
     },
   });
@@ -144,6 +145,27 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Badge: Soul Seeker</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-300">
+            Help retail customers discover their personality profile.
+          </p>
+          <p className="mt-2 text-2xl font-bold text-white">
+            {user.soulSeekerProgress} / 20
+          </p>
+          {user.soulSeekerProgress >= 20 ? (
+            <p className="mt-1 text-sm text-amber-300">Soul Seeker unlocked</p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              {20 - user.soulSeekerProgress} more to earn the badge
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div>
         <h2 className="mb-4 text-lg font-semibold text-white">Rank progression</h2>

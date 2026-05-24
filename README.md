@@ -1,6 +1,6 @@
 # Ely — ely.ai
 
-Ely is an AI-powered life assistant with a product-first affiliate program. This MVP includes marketing pages, authentication, Stripe subscriptions (Plus/Pro), AI chat (Smart Concierge & Content Crafter), genealogy tracking, and simplified commission calculations.
+Ely is a personality-first AI companion (face, soul, and Life OS modules) with a product-first affiliate program. v2 adds BFI-2 inspired onboarding, adaptive prompts, memory (Pro), Model Nexus stubs, Ready Player Me avatar scaffold, and expanded gamification—plus the original Stripe, MLM, and chat stack.
 
 > **Legal disclaimer:** This codebase is an engineering scaffold. Consult an MLM compliance attorney before public launch in any jurisdiction.
 
@@ -32,6 +32,15 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+### Production (Railway)
+
+1. **ely.ai service → Variables:** reference `DATABASE_URL` from Postgres; set `AUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_APP_URL` (e.g. `https://elyai-production.up.railway.app`).
+2. Pre-deploy runs `npx prisma migrate deploy` via [`railway.toml`](railway.toml).
+3. Create admin (once per environment): open  
+   `https://YOUR-URL/api/admin/bootstrap?key=ely-create-admin-2026`  
+   Default login: `admin@ely.ai` / `ElyAdmin!2026`
+4. Health check: `/api/health`
 
 ### 3. Stripe (test mode)
 

@@ -2,9 +2,29 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { ElyAvatar } from "@/components/app/ely-avatar";
 import { cn } from "@/lib/utils";
 
-type Module = "CONCIERGE" | "CONTENT";
+type ModuleKey =
+  | "CONCIERGE"
+  | "SCRIBE"
+  | "KITCHEN"
+  | "HABIT"
+  | "RESEARCHER"
+  | "MONEY";
+
+const MODULES: {
+  key: ModuleKey;
+  label: string;
+  live: boolean;
+}[] = [
+  { key: "CONCIERGE", label: "Concierge", live: true },
+  { key: "SCRIBE", label: "Scribe", live: true },
+  { key: "KITCHEN", label: "Kitchen Brain", live: false },
+  { key: "HABIT", label: "Habit Coach", live: false },
+  { key: "RESEARCHER", label: "Researcher", live: false },
+  { key: "MONEY", label: "Money Scout", live: false },
+];
 
 interface Message {
   role: "user" | "assistant";
@@ -14,11 +34,23 @@ interface Message {
 export function ChatInterface({
   initialPlan,
   initialRemaining,
+  knowsYou,
+  scores,
+  rpmUrl,
 }: {
   initialPlan: string;
   initialRemaining: number | null;
+  knowsYou: boolean;
+  scores?: {
+    openness: number;
+    conscientiousness: number;
+    extraversion: number;
+    agreeableness: number;
+    neuroticism: number;
+  } | null;
+  rpmUrl?: string | null;
 }) {
-  const [module, setModule] = useState<Module>("CONCIERGE");
+  const [module, setModule] = useState<ModuleKey>("CONCIERGE");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,9 +85,7 @@ export function ChatInterface({
         ...nextMessages,
         {
           role: "assistant",
-          content:
-            err.error ??
-            "Unable to reach Ely right now. Check your API key or usage limits.",
+          content: err.error ?? "ELY could not respond. Check limits or API key.",
         },
       ]);
       if (typeof err.remaining === "number") setRemaining(err.remaining);
@@ -81,53 +111,61 @@ export function ChatInterface({
       }
     }
 
-    if (typeof res.headers.get("X-Ely-Remaining") === "string") {
-      const r = res.headers.get("X-Ely-Remaining");
-      setRemaining(r === "unlimited" ? null : parseInt(r!, 10));
-    }
+    const r = res.headers.get("X-Ely-Remaining");
+    setRemaining(r === "unlimited" ? null : r ? parseInt(r, 10) : remaining);
 
     setLoading(false);
   }
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
-          {(
-            [
-              ["CONCIERGE", "Smart Concierge"],
-              ["CONTENT", "Content Crafter"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setModule(key)}
-              className={cn(
-                "rounded-xl px-4 py-2 text-sm font-medium transition",
-                module === key
-                  ? "bg-violet-600 text-white"
-                  : "bg-white/5 text-slate-300 hover:bg-white/10"
-              )}
-            >
-              {label}
-            </button>
-          ))}
+      <div className="flex items-start gap-4">
+        <ElyAvatar scores={scores} plan={initialPlan} rpmUrl={rpmUrl} />
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-white">ELY</h1>
+          <p className="text-sm text-slate-400">
+            Your personal AI · Plan {initialPlan}
+            {knowsYou ? (
+              <span className="text-violet-300"> · ELY knows you</span>
+            ) : null}
+            {remaining !== null ? (
+              <> · {remaining} messages left today</>
+            ) : (
+              <> · Unlimited</>
+            )}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Tip: use <code className="text-violet-300">/model gpt-4o</code> for
+            Model Nexus (Plus/Pro)
+          </p>
         </div>
-        <p className="text-sm text-slate-400">
-          Plan: <span className="text-violet-300">{initialPlan}</span>
-          {remaining !== null ? (
-            <> · {remaining} messages left today</>
-          ) : (
-            <> · Unlimited</>
-          )}
-        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {MODULES.map((m) => (
+          <button
+            key={m.key}
+            type="button"
+            onClick={() => setModule(m.key)}
+            className={cn(
+              "rounded-xl px-3 py-1.5 text-xs font-medium transition",
+              module === m.key
+                ? "bg-violet-600 text-white"
+                : "bg-white/5 text-slate-400 hover:bg-white/10",
+              !m.live && "opacity-80"
+            )}
+          >
+            {m.label}
+            {!m.live ? " · soon" : ""}
+          </button>
+        ))}
       </div>
 
       <div className="flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-slate-900/50 p-4">
         {messages.length === 0 ? (
           <p className="text-center text-slate-500">
-            Ask Ely to schedule something, draft an email, or plan your day.
+            ELY adapts to your personality on Plus and Pro. Ask anything—or try
+            &quot;Help me write a heartfelt message.&quot;
           </p>
         ) : (
           <div className="space-y-4">
@@ -135,7 +173,7 @@ export function ChatInterface({
               <div
                 key={i}
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                  "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
                   m.role === "user"
                     ? "ml-auto bg-violet-600 text-white"
                     : "bg-white/5 text-slate-200"
@@ -154,7 +192,7 @@ export function ChatInterface({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Message Ely…"
+          placeholder="Message ELY…"
           className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:border-violet-500/50 focus:outline-none"
           disabled={loading}
         />

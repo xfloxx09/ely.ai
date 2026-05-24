@@ -51,29 +51,66 @@ enum CommissionStatus {
 enum AiModule {
   CONCIERGE
   CONTENT
+  SCRIBE
+  KITCHEN
+  HABIT
+  RESEARCHER
+  MONEY
+}
+
+enum OnboardingStep {
+  REGISTERED
+  PERSONALITY
+  COMPLETE
+}
+
+enum PersonalityVersion {
+  SHORT
+  FULL
+}
+
+enum MemoryType {
+  FACT
+  PREFERENCE
+  EVENT
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  USAGE
+  BONUS
+}
+
+enum QuestStatus {
+  LOCKED
+  AVAILABLE
+  COMPLETED
 }
 
 model User {
-  id                 String    @id @default(cuid())
-  email              String    @unique
-  emailVerified      DateTime?
-  name               String?
-  passwordHash       String?
-  image              String?
-  role               UserRole  @default(RETAIL)
-  rank               Rank      @default(EXPLORER)
-  referralCode       String    @unique
-  sponsorId          String?
-  sponsor            User?     @relation("Sponsorship", fields: [sponsorId], references: [id])
-  referrals          User[]    @relation("Sponsorship")
-  stripeCustomerId   String?   @unique
-  xp                 Int       @default(0)
-  streak             Int       @default(0)
-  lastQuestDate      String?
-  dailyTaskCount     Int       @default(0)
-  firstInvoicePaid   Boolean   @default(false)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                      String         @id @default(cuid())
+  email                   String         @unique
+  emailVerified           DateTime?
+  name                    String?
+  passwordHash            String?
+  image                   String?
+  role                    UserRole       @default(RETAIL)
+  rank                    Rank           @default(EXPLORER)
+  referralCode            String         @unique
+  sponsorId               String?
+  sponsor                 User?          @relation("Sponsorship", fields: [sponsorId], references: [id])
+  referrals               User[]         @relation("Sponsorship")
+  stripeCustomerId        String?        @unique
+  xp                      Int            @default(0)
+  streak                  Int            @default(0)
+  lastQuestDate           String?
+  dailyTaskCount          Int            @default(0)
+  firstInvoicePaid        Boolean        @default(false)
+  onboardingStep          OnboardingStep @default(REGISTERED)
+  personalityCompletedAt  DateTime?
+  soulSeekerProgress      Int            @default(0)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 
   accounts           Account[]
   sessions           Session[]
@@ -84,6 +121,17 @@ model User {
   commissionsSource  CommissionLedger[] @relation("Source")
   aiUsage            AiUsage[]
   chatMessages       ChatMessage[]
+  personalityProfile PersonalityProfile?
+  personaSettings    PersonaSettings?
+  memoryEntries      MemoryEntry[]
+  avatarProfile      AvatarProfile?
+  userCosmetics      UserCosmetic[]
+  nexusUsage         NexusUsage[]
+  elyCredits         ElyCredits?
+  creditTransactions CreditTransaction[]
+  questProgress      UserQuestProgress[]
+  mirrorReports      MirrorReport[]
+  userApiKeys        UserApiKey[]
 }
 
 model Account {
@@ -132,6 +180,154 @@ model Subscription {
   currentPeriodEnd     DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
+}
+
+model PersonalityProfile {
+  id           String             @id @default(cuid())
+  userId       String             @unique
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  openness     Int
+  conscientiousness Int
+  extraversion Int
+  agreeableness Int
+  neuroticism  Int
+  version      PersonalityVersion @default(SHORT)
+  completedAt  DateTime           @default(now())
+  retakeCount  Int                @default(0)
+
+  @@index([userId])
+}
+
+model PersonaSettings {
+  id                      String  @id @default(cuid())
+  userId                  String  @unique
+  user                    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optOutPersonalization   Boolean @default(false)
+  toneOverride            String?
+  communicationStyleSummary String? @db.Text
+  shareTraitsWithNexus    Boolean @default(false)
+}
+
+model MemoryEntry {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        MemoryType @default(FACT)
+  content     String     @db.Text
+  embeddingId String?
+  expiresAt   DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AvatarProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rpmAvatarId    String?
+  rpmUrl         String?
+  traitSnapshot  Json?
+  evolutionStage Int      @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+model AvatarCosmetic {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  priceCents  Int
+  category    String
+  imageUrl    String?
+  active      Boolean  @default(true)
+  userCosmetics UserCosmetic[]
+}
+
+model UserCosmetic {
+  id         String   @id @default(cuid())
+  userId     String
+  cosmeticId String
+  equipped   Boolean  @default(false)
+  purchasedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cosmetic   AvatarCosmetic @relation(fields: [cosmeticId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cosmeticId])
+}
+
+model NexusUsage {
+  id           String @id @default(cuid())
+  userId       String
+  period       String
+  requestCount Int    @default(0)
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period])
+}
+
+model ElyCredits {
+  id        String @id @default(cuid())
+  userId    String @unique
+  balance   Int    @default(0)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreditTransaction {
+  id          String                @id @default(cuid())
+  userId      String
+  type        CreditTransactionType
+  amountCents Int
+  credits     Int                   @default(0)
+  description String?
+  createdAt   DateTime              @default(now())
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model PersonaQuest {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  xpReward    Int      @default(10)
+  active      Boolean  @default(true)
+  progress    UserQuestProgress[]
+}
+
+model UserQuestProgress {
+  id          String      @id @default(cuid())
+  userId      String
+  questId     String
+  status      QuestStatus @default(LOCKED)
+  completedAt DateTime?
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest       PersonaQuest @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questId])
+}
+
+model MirrorReport {
+  id        String   @id @default(cuid())
+  userId    String
+  period    String
+  summary   String   @db.Text
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period])
+}
+
+model UserApiKey {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String
+  encryptedKey String   @db.Text
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
 }
 
 model GenealogyClosure {

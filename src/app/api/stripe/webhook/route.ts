@@ -95,7 +95,48 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
-        if (userId && session.subscription) {
+        if (!userId) break;
+
+        if (session.mode === "payment") {
+          const purchaseType = session.metadata?.purchaseType;
+          if (purchaseType === "ely_credits") {
+            const credits = Number(session.metadata?.credits ?? 0);
+            const amountCents = session.amount_total ?? 0;
+            if (credits > 0) {
+              await db.$transaction([
+                db.elyCredits.upsert({
+                  where: { userId },
+                  create: { userId, balance: credits },
+                  update: { balance: { increment: credits } },
+                }),
+                db.creditTransaction.create({
+                  data: {
+                    userId,
+                    type: "PURCHASE",
+                    amountCents,
+                    credits,
+                    description: "Ely Credits pack (Phase 3 checkout)",
+                  },
+                }),
+              ]);
+            }
+          }
+          if (purchaseType === "avatar_cosmetic") {
+            const cosmeticId = session.metadata?.cosmeticId;
+            if (cosmeticId) {
+              await db.userCosmetic.upsert({
+                where: {
+                  userId_cosmeticId: { userId, cosmeticId },
+                },
+                create: { userId, cosmeticId, equipped: false },
+                update: {},
+              });
+            }
+          }
+          break;
+        }
+
+        if (session.subscription) {
           const sub = await getStripe().subscriptions.retrieve(
             String(session.subscription)
           );

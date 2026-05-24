@@ -24,6 +24,27 @@ export async function calculateGroupVolume(userId: string): Promise<number> {
       gvCents += planMonthlyValueCents("PLUS");
   }
 
+  const descendantIds = descendants.map((d) => d.descendantId);
+
+  const [creditSum, cosmeticSum] = await Promise.all([
+    db.creditTransaction.aggregate({
+      where: {
+        userId: { in: descendantIds },
+        type: "PURCHASE",
+      },
+      _sum: { amountCents: true },
+    }),
+    db.userCosmetic.findMany({
+      where: { userId: { in: descendantIds } },
+      select: { cosmetic: { select: { priceCents: true } } },
+    }),
+  ]);
+
+  gvCents += creditSum._sum.amountCents ?? 0;
+  for (const uc of cosmeticSum) {
+    gvCents += uc.cosmetic.priceCents;
+  }
+
   return gvCents;
 }
 

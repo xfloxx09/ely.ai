@@ -45,12 +45,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { onboardingStep: true, role: true },
+        });
+        token.onboardingStep = dbUser?.onboardingStep;
+        token.role = dbUser?.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+        const dbUser = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { onboardingStep: true, role: true },
+        });
+        session.user.onboardingStep = dbUser?.onboardingStep;
+        session.user.role = dbUser?.role;
       }
       return session;
     },

@@ -59,9 +59,13 @@ export async function POST(req: Request) {
         passwordHash,
         referralCode,
         sponsorId,
+        onboardingStep: "PERSONALITY",
         subscription: {
           create: { plan: "FREE", status: "ACTIVE" },
         },
+        personaSettings: { create: {} },
+        avatarProfile: { create: {} },
+        elyCredits: { create: { balance: 0 } },
       },
     });
 

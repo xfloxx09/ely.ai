@@ -1,8 +1,8 @@
-import { Plan } from "@prisma/client";
-import { AiModule } from "@prisma/client";
+import { AiModule, Plan } from "@prisma/client";
 import OpenAI from "openai";
-import { CONCIERGE_SYSTEM_PROMPT } from "./modules/concierge";
-import { CONTENT_SYSTEM_PROMPT } from "./modules/content";
+import { buildPersonaSystemPrompt } from "./persona-prompt";
+import { normalizeModule } from "./modules";
+import type { BigFiveScores } from "@/lib/personality/scoring";
 
 function getOpenAI() {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -15,24 +15,34 @@ export function modelForPlan(plan: Plan): string {
   return process.env.OPENAI_MODEL_DEFAULT ?? "gpt-4o-mini";
 }
 
-export function systemPromptForModule(module: AiModule): string {
-  return module === "CONCIERGE"
-    ? CONCIERGE_SYSTEM_PROMPT
-    : CONTENT_SYSTEM_PROMPT;
-}
-
 export async function streamChatCompletion(params: {
   plan: Plan;
   module: AiModule;
   messages: { role: "user" | "assistant" | "system"; content: string }[];
+  scores?: BigFiveScores | null;
+  optOut?: boolean;
+  toneOverride?: string | null;
+  memories?: string[];
+  styleSummary?: string | null;
 }) {
   const model = modelForPlan(params.plan);
+  const module = normalizeModule(params.module);
+
+  const system = buildPersonaSystemPrompt({
+    plan: params.plan,
+    module,
+    scores: params.scores,
+    optOut: params.optOut,
+    toneOverride: params.toneOverride,
+    memories: params.memories,
+    styleSummary: params.styleSummary,
+  });
 
   return getOpenAI().chat.completions.create({
     model,
     stream: true,
     messages: [
-      { role: "system", content: systemPromptForModule(params.module) },
+      { role: "system", content: system },
       ...params.messages.filter((m) => m.role !== "system"),
     ],
   });

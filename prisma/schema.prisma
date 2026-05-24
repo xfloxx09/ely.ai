@@ -227,6 +227,7 @@ model AvatarProfile {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rpmAvatarId    String?
   rpmUrl         String?
+  companionName  String?
   traitSnapshot  Json?
   evolutionStage Int      @default(0)
   updatedAt      DateTime @updatedAt

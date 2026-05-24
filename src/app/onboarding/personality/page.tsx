@@ -1,13 +1,16 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { PersonalityForm } from "@/components/onboarding/personality-form";
+import { PersonalityJourney } from "@/components/onboarding/personality-journey";
 
-export const metadata = { title: "Personality snapshot" };
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Awaken your ELY" };
 
 export default async function PersonalityOnboardingPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) {
+    redirect("/login?callbackUrl=/onboarding/personality");
+  }
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
@@ -18,5 +21,5 @@ export default async function PersonalityOnboardingPage() {
     redirect("/app");
   }
 
-  return <PersonalityForm />;
+  return <PersonalityJourney />;
 }

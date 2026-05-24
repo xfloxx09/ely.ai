@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +29,8 @@ export function LoginForm() {
       setError("Invalid email or password");
       return;
     }
-    router.push("/app");
+    const dest = searchParams.get("callbackUrl") ?? "/app";
+    router.push(dest);
     router.refresh();
   }
 

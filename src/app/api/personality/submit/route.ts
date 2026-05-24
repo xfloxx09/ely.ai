@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { BFI2_SHORT_ITEMS } from "@/lib/personality/bfi2-short";
+import { generateCompanionName } from "@/lib/personality/companion-names";
 import { scoreBfi2Short, buildStyleSummary } from "@/lib/personality/scoring";
 import { z } from "zod";
 
 const schema = z.object({
   answers: z.record(z.string(), z.number()),
   consent: z.literal(true),
+  companionName: z.string().min(1).max(40).optional(),
 });
 
 export async function POST(req: Request) {
@@ -35,6 +37,8 @@ export async function POST(req: Request) {
 
   const scores = scoreBfi2Short(answers);
   const styleSummary = buildStyleSummary(scores);
+  const suggestedName = generateCompanionName(scores);
+  const companionName = body.data.companionName?.trim() || suggestedName;
 
   await db.$transaction(async (tx) => {
     await tx.personalityProfile.upsert({
@@ -63,9 +67,10 @@ export async function POST(req: Request) {
       create: {
         userId: session.user!.id,
         traitSnapshot: scores,
-        evolutionStage: 0,
+        evolutionStage: 1,
+        companionName,
       },
-      update: { traitSnapshot: scores },
+      update: { traitSnapshot: scores, evolutionStage: 1, companionName },
     });
     await tx.user.update({
       where: { id: session.user!.id },
@@ -103,15 +108,12 @@ export async function POST(req: Request) {
     where: { id: session.user.id },
     select: { sponsorId: true, role: true },
   });
-  if (
-    enrolled?.sponsorId &&
-    enrolled.role === "RETAIL"
-  ) {
+  if (enrolled?.sponsorId && enrolled.role === "RETAIL") {
     await db.user.update({
       where: { id: enrolled.sponsorId },
       data: { soulSeekerProgress: { increment: 1 } },
     });
   }
 
-  return NextResponse.json({ ok: true, scores });
+  return NextResponse.json({ ok: true, scores, suggestedName, companionName });
 }

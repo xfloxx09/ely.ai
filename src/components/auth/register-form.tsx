@@ -50,7 +50,7 @@ export function RegisterForm() {
       router.push("/login");
       return;
     }
-    router.push("/app");
+    router.push("/onboarding/personality");
     router.refresh();
   }
 

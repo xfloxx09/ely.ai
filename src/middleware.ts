@@ -11,8 +11,9 @@ export default auth((req) => {
 
   const protectedPaths = ["/app", "/dashboard", "/settings", "/admin"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
+  const isOnboarding = pathname.startsWith("/onboarding");
 
-  if (isProtected && !isLoggedIn) {
+  if ((isProtected || isOnboarding) && !isLoggedIn) {
     const url = new URL("/login", req.nextUrl.origin);
     url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
@@ -22,8 +23,7 @@ export default auth((req) => {
     isLoggedIn &&
     isProtected &&
     user?.role !== "ADMIN" &&
-    user?.onboardingStep &&
-    user.onboardingStep !== "COMPLETE" &&
+    user?.onboardingStep !== "COMPLETE" &&
     !pathname.startsWith("/onboarding")
   ) {
     return NextResponse.redirect(

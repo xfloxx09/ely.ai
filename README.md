@@ -6,7 +6,7 @@ Ely is a personality-first AI companion (face, soul, and Life OS modules) with a
 
 ## Stack
 
-- **Next.js 16** (App Router, standalone output for Railway)
+- **Next.js 16** (App Router, `next start` on Railway)
 - **PostgreSQL** + **Prisma**
 - **Auth.js** (credentials)
 - **Stripe** (subscriptions + webhooks)
